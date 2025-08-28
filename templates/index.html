@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Conversor de Archivos</title>
+</head>
+<body>
+    <h1>📂 Conversor de Archivos</h1>
+    
+    <form action="/convertir" method="POST" enctype="multipart/form-data">
+        <label for="archivo">Selecciona un archivo:</label>
+        <input type="file" name="archivo" required><br><br>
+
+        <label for="tipo">Convertir a:</label>
+        <select name="tipo" required>
+            <option value="pdf">PDF</option>
+            <option value="docx">DOCX</option>
+            <option value="txt">TXT</option>
+            <option value="png">PNG</option>
+            <option value="jpg">JPG</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="csv">CSV</option>
+        </select><br><br>
+
+        <button type="submit">Convertir</button>
+    </form>
+
+    <p>Se soportan formatos: PDF, DOCX, TXT, PNG, JPG, XLSX, CSV, etc.</p>
+</body>
+</html>
