@@ -1,60 +1,41 @@
-
-from flask import Flask, render_template, request, send_file
 import os
+from flask import Flask, request, render_template, send_file
 from werkzeug.utils import secure_filename
-from fpdf import FPDF
-import pandas as pd
-from PIL import Image
+from img2pdf import convert as img2pdf_convert
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.route('/')
+@app.route("/", methods=["GET", "POST"])
 def index():
-    return render_template('index.html')
+    if request.method == "POST":
+        if "archivo" not in request.files:
+            return "No se encontró el archivo en la solicitud."
+        
+        archivo = request.files["archivo"]
+        formato_destino = request.form.get("formato")
 
-@app.route('/convertir', methods=['POST'])
-def convertir():
-    archivo = request.files['archivo']
-    extension = request.form['extension']
-    tipo = request.form['tipo']
+        if archivo.filename == "":
+            return "No se seleccionó ningún archivo."
+        
+        if archivo and formato_destino == "pdf":
+            filename = secure_filename(archivo.filename)
+            input_path = os.path.join(UPLOAD_FOLDER, filename)
+            archivo.save(input_path)
 
-    if archivo.filename == '':
-        return 'No se seleccionó ningún archivo'
+            output_filename = os.path.splitext(filename)[0] + ".pdf"
+            output_path = os.path.join(UPLOAD_FOLDER, output_filename)
 
-    filename = secure_filename(archivo.filename)
-    input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    archivo.save(input_path)
+            try:
+                with open(input_path, "rb") as f_input, open(output_path, "wb") as f_output:
+                    f_output.write(img2pdf_convert(f_input))
+                return send_file(output_path, as_attachment=True)
+            except Exception as e:
+                return f"Error en la conversión: {str(e)}"
 
-    nombre_base = os.path.splitext(filename)[0]
-    output_filename = f"{nombre_base}.{extension}"
-    output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+    return render_template("index.html")
 
-    try:
-        if extension == 'pdf' and tipo == 'imagen':
-            imagen = Image.open(input_path)
-            pdf = FPDF()
-            pdf.add_page()
-            imagen = imagen.convert('RGB')
-            imagen.save(output_path, 'PDF')
-
-        elif extension == 'xlsx' and tipo == 'csv':
-            df = pd.read_csv(input_path)
-            df.to_excel(output_path, index=False)
-
-        elif extension == 'csv' and tipo == 'xlsx':
-            df = pd.read_excel(input_path)
-            df.to_csv(output_path, index=False)
-
-        else:
-            return f"No se puede convertir de {tipo} a {extension}"
-
-        return send_file(output_path, as_attachment=True)
-
-    except Exception as e:
-        return f"Error en la conversión: {str(e)}"
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)
