@@ -9,3 +9,4 @@ pdf2image
 pdf2docx
 docx2pdf
 tabula-py
+gunicorn
