@@ -1,41 +1,42 @@
-import os
-from flask import Flask, request, render_template, send_file
+from flask import Flask, render_template, request, send_file
 from werkzeug.utils import secure_filename
-from img2pdf import convert as img2pdf_convert
+from PIL import Image
+import os
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def index():
-    if request.method == "POST":
-        if "archivo" not in request.files:
-            return "No se encontró el archivo en la solicitud."
-        
-        archivo = request.files["archivo"]
-        formato_destino = request.form.get("formato")
-
-        if archivo.filename == "":
-            return "No se seleccionó ningún archivo."
-        
-        if archivo and formato_destino == "pdf":
-            filename = secure_filename(archivo.filename)
-            input_path = os.path.join(UPLOAD_FOLDER, filename)
-            archivo.save(input_path)
-
-            output_filename = os.path.splitext(filename)[0] + ".pdf"
-            output_path = os.path.join(UPLOAD_FOLDER, output_filename)
-
-            try:
-                with open(input_path, "rb") as f_input, open(output_path, "wb") as f_output:
-                    f_output.write(img2pdf_convert(f_input))
-                return send_file(output_path, as_attachment=True)
-            except Exception as e:
-                return f"Error en la conversión: {str(e)}"
-
     return render_template("index.html")
 
+@app.route("/convertir", methods=["POST"])
+def convertir():
+    if "file" not in request.files:
+        return "No se envió ningún archivo", 400
+
+    file = request.files["file"]
+    output_format = request.form["output_format"]
+
+    if file.filename == "":
+        return "Nombre de archivo vacío", 400
+
+    filename = secure_filename(file.filename)
+    input_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(input_path)
+
+    name, ext = os.path.splitext(filename)
+    output_path = os.path.join(UPLOAD_FOLDER, f"{name}.{output_format}")
+
+    try:
+        with Image.open(input_path) as img:
+            rgb_img = img.convert("RGB")
+            rgb_img.save(output_path, output_format.upper())
+
+        return send_file(output_path, as_attachment=True)
+    except Exception as e:
+        return f"Error durante la conversión: {str(e)}", 500
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
